@@ -1,0 +1,18 @@
+version: '3.6'
+
+networks:
+  fabric-user-manager:
+    name: fabric-user-manager
+
+services:
+  couchdb:
+    image: couchdb:3.1.1
+    container_name: fabric-user-manager-couchdb
+    environment:
+      - TZ=Asia/Shanghai
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=passwd
+    networks:
+      - fabric-user-manager
+    ports:
+      - 5984:5984
