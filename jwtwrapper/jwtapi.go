@@ -1,4 +1,4 @@
-package jwt
+package jwtwrapper
 
 import (
 	"encoding/json"
@@ -30,7 +30,7 @@ var (
 
 // login
 // input values are username and password
-// return value is jwt token response
+// return value is jwtwrapper token response
 func JWTLogin(ctx *model.JWTContext, username, passwd string) *model.JWTResponse {
 	var err error
 	resp := model.InitJWTResponse()
@@ -72,7 +72,7 @@ func JWTLogin(ctx *model.JWTContext, username, passwd string) *model.JWTResponse
 		return resp
 	}
 
-	// password is right, generate jwt token
+	// password is right, generate jwtwrapper token
 	token, err := createJWTToken(ctx, user)
 	if err != nil {
 		resp.Err = err
@@ -149,7 +149,7 @@ func createJWTToken(ctx *model.JWTContext, user *model.UserAccount) (string, err
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 	tokenStr, err := token.SignedString(ctx.Opt.JWTOpt.Secret)
 	if err != nil {
-		ctx.Logger().Error().Err(err).Msg("create jwt token failed")
+		ctx.Logger().Error().Err(err).Msg("create jwtwrapper token failed")
 		return "", err
 	}
 

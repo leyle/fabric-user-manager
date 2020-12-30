@@ -2,7 +2,7 @@ package apirouter
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/leyle/fabric-user-manager/jwt"
+	"github.com/leyle/fabric-user-manager/jwtwrapper"
 	"github.com/leyle/fabric-user-manager/model"
 	"github.com/leyle/go-api-starter/couchdb"
 	"github.com/leyle/go-api-starter/ginhelper"
@@ -40,7 +40,7 @@ func LoginHandler(ctx *model.JWTContext) {
 		}
 	}
 
-	resp := jwt.JWTLogin(ctx, form.Username, form.Password)
+	resp := jwtwrapper.JWTLogin(ctx, form.Username, form.Password)
 	if resp.Err != nil {
 		ginhelper.ReturnErrJson(ctx.C, resp.Err.Error())
 		return
@@ -70,14 +70,14 @@ func CreateUserHandler(ctx *model.JWTContext) {
 	form.Username = strings.TrimSpace(form.Username)
 	form.Password = strings.TrimSpace(form.Password)
 
-	resp := jwt.JWTRegister(ctx, form.Username, form.Password, form.Role)
+	resp := jwtwrapper.JWTRegister(ctx, form.Username, form.Password, form.Role)
 
 	if resp.Err != nil {
-		if resp.Err == jwt.ErrContextNoClaim {
+		if resp.Err == jwtwrapper.ErrContextNoClaim {
 			ginhelper.Return401Json(ctx.C, resp.Err.Error())
 			return
 		}
-		if resp.Err == jwt.ErrUserNoPermission {
+		if resp.Err == jwtwrapper.ErrUserNoPermission {
 			ginhelper.Return403Json(ctx.C, resp.Err.Error())
 			return
 		}
@@ -91,7 +91,7 @@ func CreateUserHandler(ctx *model.JWTContext) {
 	ua.PassHash = ""
 
 	// enroll
-	resp2 := jwt.CAEnroll(ctx, ua.Id, passHash)
+	resp2 := jwtwrapper.CAEnroll(ctx, ua.Id, passHash)
 	if resp2.Err != nil {
 		ctx.Logger().Error().Err(resp2.Err).Str("username", form.Username).Msg("create user failed, enroll failed")
 		ginhelper.ReturnErrJson(ctx.C, resp2.Err.Error())
@@ -111,7 +111,7 @@ func CheckTokenHandler(ctx *model.JWTContext) {
 	err := ctx.C.BindJSON(&form)
 	ginhelper.StopExec(err)
 
-	resp := jwt.ParseJWTToken(ctx, form.Token)
+	resp := jwtwrapper.ParseJWTToken(ctx, form.Token)
 
 	ginhelper.ReturnOKJson(ctx.C, resp)
 }
@@ -135,7 +135,7 @@ func insureSystemAdmin(ctx *model.JWTContext, username, passwd string) *model.JW
 	resp.UserAccount = ua
 
 	// enroll it
-	resp2 := jwt.CAEnroll(ctx, username, passwd)
+	resp2 := jwtwrapper.CAEnroll(ctx, username, passwd)
 	if resp2.Err != nil {
 		resp.Err = resp2.Err
 		ctx.Logger().Error().Err(resp.Err).Msg("enroll system admin failed")
@@ -155,6 +155,6 @@ func insertSystemAdmin(ctx *model.JWTContext, username, passwd string) *model.JW
 	}
 	ua.PassHash = ua.CreatePassHash(passwd, salt)
 	ua.Updated = ua.Created
-	resp := jwt.SaveJWTUser(ctx, ua)
+	resp := jwtwrapper.SaveJWTUser(ctx, ua)
 	return resp
 }

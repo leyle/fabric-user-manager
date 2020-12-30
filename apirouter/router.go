@@ -2,7 +2,7 @@ package apirouter
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/leyle/fabric-user-manager/jwt"
+	"github.com/leyle/fabric-user-manager/jwtwrapper"
 	"github.com/leyle/fabric-user-manager/model"
 	"github.com/leyle/go-api-starter/ginhelper"
 )
@@ -16,7 +16,7 @@ func HandlerWrapper(f func(ctx *model.JWTContext), ctx *model.JWTContext) gin.Ha
 
 func auth(ctx *model.JWTContext, c *gin.Context) {
 	newCtx := ctx.New(c)
-	resp := jwt.Auth(newCtx)
+	resp := jwtwrapper.Auth(newCtx)
 	if resp.Err != nil {
 		ginhelper.Return401Json(c, resp.Err.Error())
 	}

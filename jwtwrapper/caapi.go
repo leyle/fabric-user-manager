@@ -1,4 +1,4 @@
-package jwt
+package jwtwrapper
 
 import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/client/msp"
