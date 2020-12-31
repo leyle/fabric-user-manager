@@ -4,7 +4,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/leyle/fabric-user-manager/jwtwrapper"
 	"github.com/leyle/fabric-user-manager/model"
-	"github.com/leyle/go-api-starter/couchdb"
 	"github.com/leyle/go-api-starter/ginhelper"
 	"github.com/leyle/go-api-starter/util"
 	"strings"
@@ -85,13 +84,11 @@ func CreateUserHandler(ctx *model.JWTContext) {
 		ginhelper.ReturnErrJson(ctx.C, resp.Err.Error())
 		return
 	}
-
 	ua := resp.UserAccount
-	passHash := ua.PassHash
 	ua.PassHash = ""
 
 	// enroll
-	resp2 := jwtwrapper.CAEnroll(ctx, ua.Id, passHash)
+	resp2 := jwtwrapper.CAEnroll(ctx, ua.Username, ua.Id)
 	if resp2.Err != nil {
 		ctx.Logger().Error().Err(resp2.Err).Str("username", form.Username).Msg("create user failed, enroll failed")
 		ginhelper.ReturnErrJson(ctx.C, resp2.Err.Error())
@@ -119,20 +116,34 @@ func CheckTokenHandler(ctx *model.JWTContext) {
 func insureSystemAdmin(ctx *model.JWTContext, username, passwd string) *model.JWTResponse {
 	resp := model.InitJWTResponse()
 
-	var ua *model.UserAccount
-	_, err := ctx.Ds(model.DBNameUserAccount).GetById(ctx.C.Request.Context(), username, &ua)
+	ua, err := model.GetUserAccountByUsername(ctx, username)
 	if err != nil {
-		if err == couchdb.NoIdData {
-			// do insert
-			resp = insertSystemAdmin(ctx, username, passwd)
-			return resp
-		} else {
-			// other error, we need to process it
-			resp.Err = err
+		resp.Err = err
+		return resp
+	}
+	if ua == nil {
+		resp = insertSystemAdmin(ctx, username, passwd)
+		if resp.Err != nil {
 			return resp
 		}
 	}
 	resp.UserAccount = ua
+
+	/*
+		var ua *model.UserAccount
+		_, err := ctx.Ds(model.DBNameUserAccount).GetById(ctx.C.Request.Context(), username, &ua)
+		if err != nil {
+			if err == couchdb.NoIdData {
+				// do insert
+				resp = insertSystemAdmin(ctx, username, passwd)
+				return resp
+			} else {
+				// other error, we need to process it
+				resp.Err = err
+				return resp
+			}
+		}
+	*/
 
 	// enroll it
 	resp2 := jwtwrapper.CAEnroll(ctx, username, passwd)

@@ -1,8 +1,10 @@
 package model
 
+import "github.com/leyle/go-api-starter/couchdb"
+
 type Option struct {
 	// couchdb config
-	Couchdb *CouchdbOption
+	CouchDBOpt *couchdb.CouchDBOption
 
 	// default fabric ca admin account
 	Registrar *FabricCARegistrar
@@ -12,14 +14,6 @@ type Option struct {
 
 	// JWT config
 	JWTOpt *JWTOption
-}
-
-type CouchdbOption struct {
-	// HostPort is host:port format e.g 127.0.0.1:5984
-	HostPort      string
-	User          string
-	Passwd        string
-	DefaultDBName string
 }
 
 type FabricCARegistrar struct {

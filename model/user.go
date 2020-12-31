@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/leyle/go-api-starter/couchdb"
 	"github.com/leyle/go-api-starter/util"
 )
 
@@ -43,17 +44,6 @@ type UserAccount struct {
 	Updated  *util.CurTime `json:"updated"`
 }
 
-// fabric ca user
-const DBNameCaUser = "causer"
-
-type CaUser struct {
-	// enrollId equals User.Id
-	EnrollId string        `json:"enrollId"`
-	Rev      string        `json:"_rev,omitempty"`
-	Secret   string        `json:"secret"`
-	Created  *util.CurTime `json:"created"`
-}
-
 func (u *UserAccount) IsPasswdEqual(passwd string) bool {
 	// input passwd is normal text
 	tmp := u.CreatePassHash(passwd, u.Salt)
@@ -65,4 +55,31 @@ func (u *UserAccount) IsPasswdEqual(passwd string) bool {
 
 func (u *UserAccount) CreatePassHash(passwd, salt string) string {
 	return util.GenerateHashPasswd(passwd, salt)
+}
+
+func GetUserAccountByUsername(ctx *JWTContext, username string) (*UserAccount, error) {
+	selector := map[string]string{
+		"username": username,
+	}
+
+	searchReq := &couchdb.SearchRequest{
+		Selector: selector,
+		Limit:    1,
+	}
+
+	type Resp struct {
+		Docs []*UserAccount `json:"docs"`
+	}
+	var respDocs *Resp
+	_, err := ctx.Ds(DBNameUserAccount).Search(ctx.C.Request.Context(), searchReq, &respDocs)
+	if err != nil {
+		ctx.Logger().Error().Err(err).Str("username", username).Msg("GetByUsername failed")
+		return nil, err
+	}
+
+	if len(respDocs.Docs) > 0 {
+		return respDocs.Docs[0], nil
+	}
+
+	return nil, nil
 }

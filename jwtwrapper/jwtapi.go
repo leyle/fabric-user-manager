@@ -3,10 +3,12 @@ package jwtwrapper
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/leyle/fabric-user-manager/model"
 	"github.com/leyle/go-api-starter/couchdb"
+	"github.com/leyle/go-api-starter/logmiddleware"
 	"github.com/leyle/go-api-starter/util"
 	"time"
 )
@@ -34,26 +36,16 @@ var (
 func JWTLogin(ctx *model.JWTContext, username, passwd string) *model.JWTResponse {
 	var err error
 	resp := model.InitJWTResponse()
-	/*
-		err := ctx.Ds(model.DBNameUserAccount).SetDBName(ctx.C.Request.Context(), model.DBNameUserAccount)
-		if err != nil {
-			ctx.Logger().Error().Err(err).Msg("JWTLogin, set db name failed")
-			resp.Err = err
-			return resp
-		}
-	*/
 
 	// query by username and passwd
-	// username is db's id
-	var user *model.UserAccount
-	_, err = ctx.Ds(model.DBNameUserAccount).GetById(ctx.C.Request.Context(), username, &user)
-	if err == couchdb.NoIdData {
-		ctx.Logger().Warn().Str("username", username).Msg("JWTLogin, no data refer to username")
+	user, err := model.GetUserAccountByUsername(ctx, username)
+	if err != nil {
 		resp.Err = err
 		return resp
 	}
-	if err != nil {
-		resp.Err = err
+	if user == nil {
+		ctx.Logger().Warn().Str("username", username).Msg("JWTLogin, no data refer to username")
+		resp.Err = couchdb.NoIdData
 		return resp
 	}
 
@@ -104,30 +96,22 @@ func JWTRegister(ctx *model.JWTContext, username, passwd string, role model.User
 	}
 
 	// check if username is already exist
-	var dbUser model.UserAccount
-	_, err := ctx.Ds(model.DBNameUserAccount).GetById(ctx.C.Request.Context(), username, &dbUser)
-	if err == couchdb.NoIdData {
-		// ok, create it
-		resp = registerUser(ctx, username, passwd, role)
-		if resp.Err != nil {
-			ctx.Logger().Error().Err(resp.Err).Str("username", username).Msg("register user failed")
-			return resp
-		}
-		// create account success, return immediately
-		return resp
-	}
-
-	// other error
+	dbUser, err := model.GetUserAccountByUsername(ctx, username)
 	if err != nil {
 		ctx.Logger().Error().Err(err).Str("username", username).Msg("get username from db failed")
 		resp.Err = err
 		return resp
 	}
+	if dbUser != nil {
+		err = fmt.Errorf("username[%s] exist", username)
+		ctx.Logger().Error().Err(err).Send()
+		resp.Err = err
+		return resp
+	}
 
-	// if user has exist
-	if dbUser.Id != "" {
-		resp.Err = ErrUserIdExist
-		ctx.Logger().Error().Err(ErrUserIdExist).Str("username", username).Msg("create user failed, username has exists")
+	resp = registerUser(ctx, username, passwd, role)
+	if resp.Err != nil {
+		ctx.Logger().Error().Err(resp.Err).Str("username", username).Msg("register user failed")
 		return resp
 	}
 
@@ -248,7 +232,8 @@ func registerUser(ctx *model.JWTContext, username, passwd string, role model.Use
 	ua.Updated = ua.Created
 
 	// 1. register to ca
-	resp := CARegister(ctx, ua.Id, ua.PassHash, role)
+	// use ua's username as enrollId, ua's id as secret
+	resp := CARegister(ctx, ua.Username, ua.Id, role)
 	if resp.Err != nil {
 		return resp
 	}
@@ -267,7 +252,7 @@ func SaveJWTUser(ctx *model.JWTContext, ua *model.UserAccount) *model.JWTRespons
 	resp := model.InitJWTResponse()
 
 	uaData, _ := json.Marshal(ua)
-	err := ctx.Ds(model.DBNameUserAccount).Create(ctx.C.Request.Context(), ua.Id, uaData)
+	err := ctx.Ds(model.DBNameUserAccount).CreateDoc(ctx.C.Request.Context(), ua.Id, uaData)
 	if err != nil {
 		ctx.Logger().Error().Err(err).Str("username", ua.Username).Msg("create user failed")
 		resp.Err = err
@@ -281,5 +266,6 @@ func SaveJWTUser(ctx *model.JWTContext, ua *model.UserAccount) *model.JWTRespons
 func createUserDataId(username string) string {
 	// if needed, we can generate a uuid4
 	// now we just return the input string
-	return username
+	// return username
+	return logmiddleware.GenerateReqId()
 }

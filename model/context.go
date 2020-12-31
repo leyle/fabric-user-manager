@@ -29,8 +29,6 @@ func (jwtc *JWTContext) Logger() *zerolog.Logger {
 	return logger
 }
 
-func (jwtc *JWTContext) Ds(dbName string) *couchdb.CouchDB {
-	ds := couchdb.NewCouchDB(jwtc.Opt.Couchdb.HostPort, jwtc.Opt.Couchdb.User, jwtc.Opt.Couchdb.Passwd, dbName)
-	_ = ds.SetDBName(jwtc.C, dbName)
-	return ds
+func (jwtc *JWTContext) Ds(dbName string) *couchdb.CouchDBClient {
+	return couchdb.New(jwtc.Opt.CouchDBOpt, dbName)
 }

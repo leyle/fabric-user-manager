@@ -2,6 +2,7 @@ package apirouter
 
 import (
 	"github.com/leyle/fabric-user-manager/model"
+	"github.com/leyle/go-api-starter/couchdb"
 	"github.com/leyle/go-api-starter/ginhelper"
 	"github.com/rs/zerolog"
 	"os"
@@ -9,11 +10,11 @@ import (
 )
 
 func setupCtx() *model.JWTContext {
-	dbOpt := &model.CouchdbOption{
-		HostPort:      "192.168.2.40:5984",
-		User:          "admin",
-		Passwd:        "passwd",
-		DefaultDBName: "fabric",
+	dbOpt := &couchdb.CouchDBOption{
+		HostPort: "localhost:5984",
+		User:     "admin",
+		Passwd:   "passwd",
+		Protocol: "http",
 	}
 
 	registerOpt := &model.FabricCARegistrar{
@@ -33,7 +34,7 @@ func setupCtx() *model.JWTContext {
 	}
 
 	opt := &model.Option{
-		Couchdb:        dbOpt,
+		CouchDBOpt:     dbOpt,
 		Registrar:      registerOpt,
 		FabricGWOption: gwOpt,
 		JWTOpt:         jwtOpt,
@@ -53,8 +54,13 @@ func TestJWTRouter(t *testing.T) {
 
 	ctx := setupCtx()
 
+	err := Init(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	apiRouter := e.Group("/api")
 	JWTRouter(ctx, apiRouter.Group(""))
 
-	e.Run(":8000")
+	e.Run(":9000")
 }
