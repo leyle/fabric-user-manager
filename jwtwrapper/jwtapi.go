@@ -187,7 +187,8 @@ func Auth(ctx *model.JWTContext) *model.JWTResponse {
 	}
 
 	// check wallet credential exist
-	enrollId := resp.Claim.UserId
+	// enrollId := resp.Claim.UserId
+	enrollId := resp.Claim.UserName
 	if !IsCAUserExist(ctx, enrollId) {
 		authRet.Err = ErrNoWalletCredential
 		ctx.Logger().Error().Err(authRet.Err).Msg("user don't have wallet credential")
